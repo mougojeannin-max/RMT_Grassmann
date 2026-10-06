@@ -1,5 +1,5 @@
 data/*
-!data/README.md
+!data/.gitkeep
 results/
 outputs/
 .venv/

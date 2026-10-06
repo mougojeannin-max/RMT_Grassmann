@@ -8,8 +8,25 @@ Install the dependencies in a virtual environment:
 python -m pip install -r requirements.txt
 ```
 
-For Figure 1 and the tables, first prepare the datasets in `data/`.
-Follow [data/README.md](data/README.md).
+For Figure 1 and the tables, download the datasets into `data/raw/<dataset>`.
+Keep the release folder structure.
+
+| Dataset | Download | Required files |
+|---|---|---|
+| `rice` | [Zenodo](https://zenodo.org/records/3241923) | Extracted release with `index.csv` and acquisition folders |
+| `corn` | [Mendeley](https://data.mendeley.com/datasets/4n4xbnx8sr/1) | `4n4xbnx8sr-1.zip`, kept zipped |
+| `wheat` | [Mendeley](https://data.mendeley.com/datasets/j7jm7rbwxh/1) | Extracted `fanmai8`, `jinan17`, `xingmai13`, `yangmai6` folders |
+| `capgmyo` | [Figshare](https://figshare.com/articles/dataset/7210397) | `dba-s1.zip` through `dba-s18.zip`, kept zipped |
+| `hyser` | [PhysioNet](https://physionet.org/content/hd-semg/2.0.0/) | PR session 1 for subjects 01–20: `label_dynamic.txt` and `dynamic_preprocess_sample*.hea` / `.dat` |
+| `flex` | [FlexWear-HD](https://huggingface.co/datasets/jehanyang/FlexWear-HD/tree/90d253c1fd31b8756e8a05c473cc550b7f8ba2c0/FlexWear-HD_Dataset) | `p001` through `p013`, each with `data_allchannels_initial.h5` |
+
+Prepare each dataset with `prepare_raw.py`. For example:
+
+```sh
+python prepare_raw.py rice --source data/raw/rice
+```
+
+Replace `rice` with each dataset name above. Prepared files go into `data/`.
 
 | Experiment | Command |
 |---|---|

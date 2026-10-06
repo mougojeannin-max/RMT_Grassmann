@@ -463,7 +463,7 @@ def main():
         for subject in subjects:
             path = args.data / dataset / f'subject{subject:02d}.npz'
             if not path.is_file():
-                parser.error(f'Missing data: {path}. See data/README.md and prepare_raw.py.')
+                parser.error(f'Missing data: {path}. See README.md and prepare_raw.py.')
             units.append((dataset, subject))
         tasks += [(str(args.data), str(args.output), dataset, subjects, seed, args.methods,
                    str(args.selected) if args.selected else None, args.threads, args.distance_threads) for seed in args.seeds]
