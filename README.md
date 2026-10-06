@@ -32,7 +32,7 @@ Replace `rice` with each dataset name above. Prepared files go into `data/`.
 |---|---|
 | Figure 1: RICE spectrum | `python figure1.py` |
 | Figures 2 and 3: simulation plots | `python simulation.py` |
-| Tables 2 and 4: real-data experiments | `python real_data.py --distance-threads 4 --output results/tables` |
+| Table 2(a, b): real-data experiments | `python real_data.py --distance-threads 4 --output results/tables` |
 
 The simulations need no dataset. Each class uses `ceil(0.6*sqrt(p))` training
 SCMs and `ceil(0.4*sqrt(p))` test SCMs. The table command includes hyperparameter

@@ -1,4 +1,4 @@
-"""Reproduce Tables 2 and 4 using the frozen train/validation/test splits."""
+"""Reproduce Table 2(a, b) using the frozen train/validation/test splits."""
 from argparse import ArgumentParser
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import hashlib
