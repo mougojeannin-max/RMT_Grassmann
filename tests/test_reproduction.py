@@ -245,14 +245,14 @@ class ScientificTests(unittest.TestCase):
 
 class SimulationTests(unittest.TestCase):
     def test_paper_repetitions(self):
-        # Independently archived p=32 results, before the submission extraction.
+        # Independently recomputed with the original experimental kernels.
         accuracies = (
-            {"CORR": .6875, "NAIVE": .5625, "ORACLE": .875, "AI-CORR": .5, "LE-CORR": .625},
-            {"CORR": .625, "NAIVE": .375, "ORACLE": .6875, "AI-CORR": .625, "LE-CORR": .75},
+            {"CORR": 5/12, "NAIVE": 10/12, "ORACLE": 10/12, "AI-CORR": 9/12, "LE-CORR": 9/12},
+            {"CORR": 10/12, "NAIVE": 5/12, "ORACLE": 11/12, "AI-CORR": 9/12, "LE-CORR": 10/12},
         )
         maes = (
-            {"CORR": .7986732432462155, "NAIVE": 3.1243750393140126, "ORACLE": .24541955638359703},
-            {"CORR": .6939562617675864, "NAIVE": 3.1368877827870656, "ORACLE": .14177389787196903},
+            {"CORR": .8985307652273619, "NAIVE": 3.1730864981559748, "ORACLE": .2542624655964872},
+            {"CORR": .7608490819565342, "NAIVE": 3.034712517236455, "ORACLE": .12802468661625616},
         )
         with threadpool_limits(limits=1):
             truth, _, xi = population_reference(32)
@@ -264,7 +264,17 @@ class SimulationTests(unittest.TestCase):
             for row in result["distance"]:
                 np.testing.assert_allclose(row["mae"], maes[repetition][row["method"]],
                                            rtol=1e-7, atol=1e-9)
-                self.assertEqual(row["pairs"], 32)
+                self.assertEqual(row["pairs"], 24)
+
+    def test_article_sample_counts(self):
+        from simulation import DIMENSIONS, train_size, test_size
+        self.assertEqual([train_size(p) for p in DIMENSIONS], [4, 5, 6, 7, 8, 9, 9, 10])
+        self.assertEqual([test_size(p) for p in DIMENSIONS], [3, 4, 4, 5, 6, 6, 6, 7])
+        with threadpool_limits(limits=1):
+            _, labels, _, train, test = generate(32, np.random.default_rng(0))
+        np.testing.assert_array_equal(np.bincount(labels[train]), [4]*4)
+        np.testing.assert_array_equal(np.bincount(labels[test]), [3]*4)
+        self.assertFalse(set(train) & set(test))
 
     def test_whitening_uses_training_objects_only(self):
         with threadpool_limits(limits=1):

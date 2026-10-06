@@ -79,12 +79,20 @@ def figure1(folder):
 def simulation(folder, partial):
     result = {}
     for name, expected_name, fields, tolerance in (
-        ("knn_repetitions", "simulation_accuracy", ["accuracy"], 1e-12),
-        ("distance_repetitions", "simulation_mae", ["true_distance", "mean_distance", "mae", "mse"], 1e-7),
+        ("knn_repetitions", "simulation_accuracy", ["accuracy", "n_train", "n_test", "n_pool"], 1e-12),
+        ("distance_repetitions", "simulation_mae", ["true_distance", "mean_distance", "mae", "mse", "pairs"], 1e-7),
     ):
         expected = pd.read_csv(reference_file(expected_name + ".csv"))
         expected["method"] = expected.method.replace(METHOD_NAMES)
         actual = pd.read_csv(folder / (name + ".csv"))
+        train_count = np.ceil(.6*np.sqrt(actual.p)).astype(int)
+        test_count = np.ceil(.4*np.sqrt(actual.p)).astype(int)
+        if name == "knn_repetitions":
+            np.testing.assert_array_equal(actual.n_train, 4*train_count)
+            np.testing.assert_array_equal(actual.n_test, 4*test_count)
+            np.testing.assert_array_equal(actual.n_pool, 4*train_count*10*actual.p)
+        else:
+            np.testing.assert_array_equal(actual.pairs, 2*train_count*test_count)
         result[name] = compare(actual, expected,
                                ["p", "repetition", "method"], fields, partial, tolerance)
         key = ["p", "repetition", "method"]

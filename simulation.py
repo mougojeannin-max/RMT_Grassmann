@@ -21,15 +21,19 @@ METHODS = ("CORR", "NAIVE", "AI-CORR", "LE-CORR", "ORACLE")
 GRASSMANN = ("CORR", "NAIVE", "ORACLE")
 STYLES = {
     "CORR": ("#0072B2", "o", "-"),
-    "NAIVE": ("#CC79A7", "^", "--"),
-    "AI-CORR": ("#009E73", "D", ":"),
-    "LE-CORR": ("#E69F00", "v", "-."),
-    "ORACLE": ("#222222", "s", (0, (4, 1.3, 1, 1.3, 1, 1.3))),
+    "NAIVE": ("#CC79A7", "^", "-"),
+    "AI-CORR": ("#009E73", "D", "-"),
+    "LE-CORR": ("#E69F00", "v", "-"),
+    "ORACLE": ("#222222", "s", "--"),
 }
 
 
 def train_size(p):
     return int(np.ceil(.6*np.sqrt(p)))
+
+
+def test_size(p):
+    return int(np.ceil(.4*np.sqrt(p)))
 
 
 def inverse_sqrt(matrix):
@@ -83,8 +87,7 @@ def generate(p, rng):
     n = 10*p
     scms, labels, train, test = [], [], [], []
     for label in range(4):
-        # The published graphs use exactly four test objects per class.
-        for count, indices in ((train_size(p), train), (4, test)):
+        for count, indices in ((train_size(p), train), (test_size(p), test)):
             for _ in range(count):
                 indices.append(len(labels))
                 observations = factors[label]@rng.standard_normal((p, n))
@@ -149,7 +152,7 @@ def one_repetition(p, repetition, truth, oracle_xi):
     matrices = distance_matrices(white, sizes, train, test, n_pool, labels, oracle_xi)
     pairs = (((labels[test, None] == 0) & (labels[train][None, :] == 1))
              | ((labels[test, None] == 1) & (labels[train][None, :] == 0)))
-    if int(pairs.sum()) != 2*train_size(p)*4:
+    if int(pairs.sum()) != 2*train_size(p)*test_size(p):
         raise AssertionError("Incorrect number of class 1 / class 2 pairs")
     accuracy, errors = [], []
     for method, matrix in matrices.items():
@@ -221,7 +224,7 @@ def figures(accuracy, errors, output):
             ax.tick_params(labelsize=7, pad=2)
             fig.legend(*ax.get_legend_handles_labels(), loc="lower center",
                        bbox_to_anchor=(.55, .005), ncol=3 if len(methods) <= 3 else 2,
-                       frameon=False, fontsize=7, handlelength=2.6, columnspacing=.9)
+                       frameon=False, fontsize=7, handlelength=1.3, columnspacing=.9)
             fig.savefig(output/(stem+".pdf"), metadata={"Creator": "", "Producer": "",
                                                       "CreationDate": None, "ModDate": None})
             fig.savefig(output/(stem+".png"), dpi=220)
@@ -246,7 +249,7 @@ def run(output, dimensions=DIMENSIONS, repetitions=20, workers=1):
     manifest = dict(dimensions=dimensions, repetitions=repetitions, seed=SEED,
         methods=METHODS, distance_methods=GRASSMANN, classes=4, rank=1, c=.1,
         weak=36., strong=45., angle_deg=3., rho=.3, alpha=.6, beta=.45, gamma=1/3,
-        neighbors=3, train_sqrt_scale=.6, test_per_class=4,
+        neighbors=3, train_sqrt_scale=.6, test_sqrt_scale=.4, sqrt_rounding="ceil",
         protocol="Gaussian observations; additive sinusoidal signals; empirical train-only whitening",
         uncertainty="Pointwise 95% Student intervals across independent repetition means",
         oracle="True rank and population xi; empirical eigenvectors and empirical pooled whitening",
@@ -264,9 +267,9 @@ def run(output, dimensions=DIMENSIONS, repetitions=20, workers=1):
     with threadpool_limits(limits=1):
         for p in dimensions:
             truth, psi, xi = population_reference(p)
-            protocol.append(dict(p=p, n=10*p, train_per_class=train_size(p), test_per_class=4,
+            protocol.append(dict(p=p, n=10*p, train_per_class=train_size(p), test_per_class=test_size(p),
                                  repetitions=repetitions, true_distance=truth,
-                                 pairs_per_repetition=2*train_size(p)*4))
+                                 pairs_per_repetition=2*train_size(p)*test_size(p)))
             for label in range(4):
                 parameters.append(dict(p=p, class_index=label+1, psi=float(psi[label, 0]),
                                        xi=float(xi[label, 0]), c=.1))
