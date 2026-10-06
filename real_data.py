@@ -14,6 +14,7 @@ from threadpoolctl import threadpool_limits
 
 from distances import (alignment_coefficients, completed_distances, configure_distance_threads,
                        pca_distances, rank_threshold)
+from references import reference_file
 
 DATASETS = {'rice': 1, 'corn': 1, 'wheat': 1, 'capgmyo': 18, 'hyser': 20, 'flex': 13}
 HSI = ('rice', 'corn', 'wheat')
@@ -42,8 +43,8 @@ def input_fingerprints(folder, units):
     root = Path(__file__).resolve().parent
     for dataset, subject in units:
         path = Path(folder) / dataset / f'subject{subject:02d}.npz'
-        frozen_path = root / 'reference' / 'splits' / f'{dataset}_{subject:02d}.npz'
-        with np.load(path, allow_pickle=False) as data, np.load(frozen_path, allow_pickle=False) as frozen:
+        frozen_file = reference_file(f'splits/{dataset}_{subject:02d}.npz', root)
+        with np.load(path, allow_pickle=False) as data, np.load(frozen_file, allow_pickle=False) as frozen:
             for key in frozen.files:
                 if key not in data or not np.array_equal(data[key], frozen[key]):
                     raise ValueError(f'Changed frozen metadata: {dataset}/{subject:02d}/{key}')
@@ -340,7 +341,7 @@ def select(scores, requested, subjects):
 
 
 def read_selected(path, dataset, seed, methods):
-    table = pd.read_csv(path)
+    table = pd.read_csv(reference_file('selected.csv') if str(path) == 'published' else path)
     table = table[table.dataset.eq(dataset) & table.seed.eq(seed) & table.method.isin(methods)]
     if len(table) != len(methods) or set(table.method) != set(methods):
         raise ValueError('Expected exactly one frozen selection per dataset, seed and method')
@@ -440,7 +441,8 @@ def main():
     parser.add_argument('--seeds', nargs='+', type=int, choices=SEEDS, default=SEEDS)
     parser.add_argument('--subjects', nargs='+', type=int, help='Optional participant subset; produces a partial result')
     parser.add_argument('--methods', nargs='+', choices=METHODS, default=list(METHODS))
-    parser.add_argument('--selected', type=Path, help='Test-only verification using a frozen selection CSV; skips validation')
+    parser.add_argument('--selected', nargs='?', const='published', type=Path,
+                        help='Use published parameters, or a supplied CSV; skips validation')
     parser.add_argument('--workers', type=int, default=1)
     parser.add_argument('--threads', type=int, default=1, help='BLAS threads per worker')
     parser.add_argument('--distance-threads', type=int, default=1,
@@ -484,9 +486,12 @@ def main():
     print('Checking frozen metadata and input checksums...', flush=True)
     protocol['input_sha256'] = input_fingerprints(args.data, units)
     code = Path(__file__).resolve().parent
-    protocol['code_sha256'] = {name: file_hash(code / name) for name in ('real_data.py', 'distances.py')}
+    protocol['code_sha256'] = {name: file_hash(code / name) for name in
+                             ('real_data.py', 'distances.py', 'references.py', 'reference.zip')}
     protocol['versions'] = {name: version(name) for name in ('numpy', 'scipy', 'pandas', 'scikit-learn')}
-    protocol['selected_sha256'] = file_hash(args.selected) if args.selected else None
+    protocol['selected_sha256'] = (hashlib.sha256(reference_file('selected.csv').getvalue()).hexdigest()
+                                  if str(args.selected) == 'published' else
+                                  file_hash(args.selected) if args.selected else None)
     if args.resume:
         previous = json.loads((args.output / 'protocol.json').read_text(encoding='utf8'))
         resources = {'workers', 'distance_threads'}

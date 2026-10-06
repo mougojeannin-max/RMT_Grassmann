@@ -37,6 +37,8 @@ Replace `rice` with each dataset name above. Prepared files go into `data/`.
 The simulations need no dataset. The table command includes hyperparameter
 selection. Add `--resume` to continue an interrupted table run.
 All outputs are saved under `results/`.
+Frozen partitions and expected results are bundled in `reference.zip`.
+The scripts read this archive directly.
 
 To reproduce and check all results with the published parameter settings, run:
 

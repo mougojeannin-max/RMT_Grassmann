@@ -1,10 +1,13 @@
-"""Scientific checks using independent formulas and held-out perturbations."""
+"""Scientific regression, data isolation and independent reference checks."""
 import copy
+import io
 from pathlib import Path
 import sys
 import tempfile
+from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
+from zipfile import ZipFile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import numpy as np
@@ -13,6 +16,9 @@ from threadpoolctl import threadpool_limits
 
 from distances import completed_distances, configure_distance_threads, pca_distances
 import real_data as real
+from references import reference_file
+from simulation import SEED, generate, population_reference, whiten, worker
+from verify import compare, figure1
 
 
 def fixture():
@@ -206,10 +212,12 @@ class ScientificTests(unittest.TestCase):
         metadata = {k: v for k, v in data.items() if k != 'covariances'}
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / 'reference/splits').mkdir(parents=True)
             (root / 'data/rice').mkdir(parents=True)
             path = root / 'data/rice/subject00.npz'
-            np.savez_compressed(root / 'reference/splits/rice_00.npz', **metadata)
+            packed = io.BytesIO()
+            np.savez_compressed(packed, **metadata)
+            with ZipFile(root / 'reference.zip', 'w') as archive:
+                archive.writestr('splits/rice_00.npz', packed.getvalue())
             np.savez_compressed(path, **data)
             with patch.object(real, '__file__', str(root / 'real_data.py')):
                 before = real.input_fingerprints(root / 'data', [('rice', 0)])
@@ -233,6 +241,73 @@ class ScientificTests(unittest.TestCase):
             pd.DataFrame([dict(method='Corr_raw', ba=1.)]).to_csv(folder / 'test.csv', index=False)
             with self.assertRaisesRegex(ValueError, 'Changed checkpoint output'):
                 real.read_checkpoint(folder, 'rice', 42)
+
+
+class SimulationTests(unittest.TestCase):
+    def test_paper_repetitions(self):
+        # Independently archived p=32 results, before the submission extraction.
+        accuracies = (
+            {"CORR": .6875, "NAIVE": .5625, "ORACLE": .875, "AI-CORR": .5, "LE-CORR": .625},
+            {"CORR": .625, "NAIVE": .375, "ORACLE": .6875, "AI-CORR": .625, "LE-CORR": .75},
+        )
+        maes = (
+            {"CORR": .7986732432462155, "NAIVE": 3.1243750393140126, "ORACLE": .24541955638359703},
+            {"CORR": .6939562617675864, "NAIVE": 3.1368877827870656, "ORACLE": .14177389787196903},
+        )
+        with threadpool_limits(limits=1):
+            truth, _, xi = population_reference(32)
+        self.assertAlmostEqual(truth, .3624233067286206, places=12)
+        for repetition in range(2):
+            result = worker((32, repetition, truth, xi))
+            actual = {row["method"]: row["accuracy"] for row in result["accuracy"]}
+            self.assertEqual(actual, accuracies[repetition])
+            for row in result["distance"]:
+                np.testing.assert_allclose(row["mae"], maes[repetition][row["method"]],
+                                           rtol=1e-7, atol=1e-9)
+                self.assertEqual(row["pairs"], 32)
+
+    def test_whitening_uses_training_objects_only(self):
+        with threadpool_limits(limits=1):
+            seed = np.random.SeedSequence([SEED, 32, 0]).spawn(2)[0]
+            scms, _, sizes, train, test = generate(32, np.random.default_rng(seed))
+            white, n_pool = whiten(scms, sizes, train)
+            changed = scms.copy()
+            changed[test] *= 10.
+            altered, changed_pool = whiten(changed, sizes, train)
+        np.testing.assert_array_equal(white[train], altered[train])
+        self.assertEqual(n_pool, changed_pool)
+        self.assertEqual(n_pool, 5120)
+
+
+class VerificationTests(unittest.TestCase):
+    def test_missing_and_duplicate_draws_are_rejected(self):
+        reference = pd.DataFrame({"draw": [0, 1], "score": [.25, .75]})
+        with self.assertRaises(ValueError):
+            compare(reference.iloc[:1], reference, ["draw"], ["score"])
+        with self.assertRaises(ValueError):
+            compare(pd.concat([reference, reference.iloc[:1]]), reference, ["draw"], ["score"])
+        result = compare(reference.iloc[:1], reference, ["draw"], ["score"], partial=True)
+        self.assertFalse(result["complete"])
+        self.assertEqual(result["missing_rows"], 1)
+
+    def test_equal_means_do_not_hide_different_draws(self):
+        reference = pd.DataFrame({"draw": [0, 1], "score": [.25, .75]})
+        altered = pd.DataFrame({"draw": [0, 1], "score": [.75, .25]})
+        with self.assertRaises(AssertionError):
+            compare(altered, reference, ["draw"], ["score"])
+
+    def test_copied_histogram_cannot_hide_a_different_or_nonfinite_spectrum(self):
+        with TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            (folder / 'figure1_histogram.csv').write_bytes(reference_file('figure1_histogram.csv').getvalue())
+            values = np.r_[np.ones(254), 4.95, 7.74]
+            np.savetxt(folder / 'figure1_eigenvalues.csv', values, delimiter=',', header='eigenvalue', comments='')
+            with self.assertRaises(AssertionError):
+                figure1(folder)
+            values[0] = np.nan
+            np.savetxt(folder / 'figure1_eigenvalues.csv', values, delimiter=',', header='eigenvalue', comments='')
+            with self.assertRaises(ValueError):
+                figure1(folder)
 
 
 if __name__ == '__main__':

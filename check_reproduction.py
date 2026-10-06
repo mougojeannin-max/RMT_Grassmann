@@ -73,7 +73,7 @@ def main():
             command = ['real_data.py', '--output', tables, '--workers', args.workers,
                        '--distance-threads', args.distance_threads]
             if not args.full_grid:
-                command += ['--selected', 'reference/selected.csv']
+                command += ['--selected']
             if (tables / 'protocol.json').exists():
                 command.append('--resume')
             run(*command)

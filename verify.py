@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 from scipy.stats import t
 
-ROOT = Path(__file__).resolve().parent
-REFERENCE = ROOT / "reference"
+from references import reference_file
+
 METHOD_NAMES = {"grassmann_corrigee_mp": "CORR", "grassmann_naive_rang_naif": "NAIVE",
                 "grassmann_oracle_empirical": "ORACLE", "affine_corrigee": "AI-CORR",
                 "log_euclidienne_corrigee": "LE-CORR"}
@@ -23,12 +23,12 @@ def array_checksum(array):
 
 
 def data_files(folder):
-    expected = json.loads((REFERENCE / "data_checksums.json").read_text(encoding="utf8"))
+    expected = json.load(reference_file("data_checksums.json"))
     for unit, checksum in expected.items():
         dataset, subject = unit.rsplit("_", 1)
         path = folder / dataset / ("subject" + subject + ".npz")
         with np.load(path, allow_pickle=False) as archive, np.load(
-                REFERENCE / "splits" / (unit + ".npz"), allow_pickle=False) as frozen:
+                reference_file("splits/" + unit + ".npz"), allow_pickle=False) as frozen:
             for field in frozen.files:
                 np.testing.assert_array_equal(archive[field], frozen[field], err_msg=f"{unit}: {field}")
             if "signals" in archive:
@@ -62,7 +62,7 @@ def compare(actual, expected, keys, values, partial=False, atol=1e-12, rtol=0):
 
 def figure1(folder):
     actual = np.loadtxt(folder / "figure1_histogram.csv", delimiter=",", skiprows=1)
-    expected = np.loadtxt(REFERENCE / "figure1_histogram.csv", delimiter=",", skiprows=1)
+    expected = np.loadtxt(reference_file("figure1_histogram.csv"), delimiter=",", skiprows=1)
     # The reference was independently measured from the published vector PDF.
     np.testing.assert_allclose(actual, expected, rtol=0, atol=3e-6)
     values = np.loadtxt(folder / "figure1_eigenvalues.csv", delimiter=",", skiprows=1)
@@ -82,7 +82,7 @@ def simulation(folder, partial):
         ("knn_repetitions", "simulation_accuracy", ["accuracy"], 1e-12),
         ("distance_repetitions", "simulation_mae", ["true_distance", "mean_distance", "mae", "mse"], 1e-7),
     ):
-        expected = pd.read_csv(REFERENCE / (expected_name + ".csv"))
+        expected = pd.read_csv(reference_file(expected_name + ".csv"))
         expected["method"] = expected.method.replace(METHOD_NAMES)
         actual = pd.read_csv(folder / (name + ".csv"))
         result[name] = compare(actual, expected,
@@ -106,10 +106,10 @@ def tables(folder, partial):
     test = pd.read_csv(folder / "test.csv")
     if not test.status.eq("ok").all() or set(test.phase) != {"test"}:
         raise ValueError("Invalid or non-test rows")
-    result = {"test_scores": compare(test, pd.read_csv(REFERENCE / "scores.csv"),
+    result = {"test_scores": compare(test, pd.read_csv(reference_file("scores.csv")),
               ["dataset", "subject", "seed", "method"], ["ba", "accuracy"], partial)}
     keys = ["dataset", "subject", "seed", "method"]
-    target = pd.read_csv(REFERENCE / "scores.csv").set_index(keys).loc[test.set_index(keys).index]
+    target = pd.read_csv(reference_file("scores.csv")).set_index(keys).loc[test.set_index(keys).index]
     fields = ["q", "tau", "alpha", "beta", "gamma"]
     np.testing.assert_allclose(test[fields].to_numpy(float), target[fields].to_numpy(float),
                                rtol=0, atol=1e-12, equal_nan=True)
@@ -118,7 +118,7 @@ def tables(folder, partial):
         split = test.groupby(["dataset", "method", "seed"]).ba.mean()
         summary = split.groupby(["dataset", "method"]).agg(["mean", "std"]).reset_index()
         summary = summary.rename(columns={"mean": "ba_mean", "std": "ba_std"})
-        result["published_tables"] = compare(summary, pd.read_csv(REFERENCE / "tables.csv"),
+        result["published_tables"] = compare(summary, pd.read_csv(reference_file("tables.csv")),
                 ["dataset", "method"], ["ba_mean", "ba_std"])
         result["saved_summary"] = compare(pd.read_csv(folder / "summary.csv"), summary,
                 ["dataset", "method"], ["ba_mean", "ba_std"])
@@ -132,7 +132,7 @@ def selection(folder, partial):
     if protocol["mode"] != "full_validation_grid":
         raise ValueError("Selection verification requires a freshly run full validation grid")
     actual = pd.read_csv(folder / "selected.csv")
-    expected = pd.read_csv(REFERENCE / "selected.csv")
+    expected = pd.read_csv(reference_file("selected.csv"))
     keys = ["dataset", "seed", "method"]
     result = compare(actual, expected, keys, ["validation_ba"], partial)
     expected = expected.set_index(keys).loc[actual.set_index(keys).index]

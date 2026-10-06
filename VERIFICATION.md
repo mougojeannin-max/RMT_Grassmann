@@ -8,7 +8,7 @@ synthetic plots (Figures 2 and 3), and Tables 2 and 4.
 
 - A fresh CPython 3.9 environment installed `requirements.txt` successfully;
   `pip check` found no dependency conflicts. The complete installed package
-  set is recorded in `requirements-lock.txt`.
+  set is recorded in `requirements.txt`.
 - All 19 tests passed in the pinned environment. They cover independent
   principal-angle formulas, rank completion, diagonal covariance-distance
   formulas, rejection of singular PCA inputs, absence of held-out leakage,
@@ -16,9 +16,15 @@ synthetic plots (Figures 2 and 3), and Tables 2 and 4.
   simulation draws, bit-identical serial/parallel distances, and verification
   failures for missing or different draws.
 - Input metadata are frozen for all 54 dataset/participant units.
-  `reference/data_checksums.json` fingerprints the numerical inputs.
+  `data_checksums.json` inside `reference.zip` fingerprints the numerical inputs.
 - `check_reproduction.py --quick` completed successfully, including all
   tests and independent comparison of two freshly generated simulation draws.
+- The minimal layout packs all 61 reference files into `reference.zip`.
+  Every archived file is byte-identical to its previous standalone version.
+  All 19 tests are retained in `tests/test_reproduction.py`.
+  The new readers reproduce all 54 metadata units and 360 selected settings.
+  A CapgMyo subject/split replay and checkpoint resumption were also checked;
+  all six scores match exactly. The numerical kernels are unchanged.
 
 ## Figure 1
 
@@ -106,7 +112,7 @@ preparation command checks each selected grain's label and sample count.
 2. Four-class pooling gives `p/n_pool = c/(4*m_p)`, rather than `c/m_p`.
 3. Figure 1 is a descriptive all-grain pooled example with SCM denominator
    `n`. Tables 2 and 4 use training-only pooling and denominator `n-1`.
-   The two conventions are explicit in the code and README.
+   The two conventions are explicit in the code.
 
 ## Anonymous artifact
 

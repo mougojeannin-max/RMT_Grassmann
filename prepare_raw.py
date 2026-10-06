@@ -11,6 +11,8 @@ from scipy import ndimage as ndi
 from scipy.io import loadmat
 from threadpoolctl import threadpool_limits
 
+from references import reference_file
+
 ROOT = Path(__file__).resolve().parent
 SUBJECTS = {'rice': 1, 'corn': 1, 'wheat': 1, 'capgmyo': 18, 'hyser': 20, 'flex': 13}
 RICE_CLASSES = ('91RH', 'CNC12', 'GS55R', 'HT18', 'LDA8', 'LTH35',
@@ -22,7 +24,7 @@ FLEX_GESTURES = ('abduct_p1', 'adduct_p1', 'extend_p1', 'grip_p1', 'pronate_p1',
 
 
 def metadata(dataset, subject):
-    with np.load(ROOT / 'reference/splits' / f'{dataset}_{subject:02d}.npz',
+    with np.load(reference_file(f'splits/{dataset}_{subject:02d}.npz', ROOT),
                  allow_pickle=False) as archive:
         return {key: archive[key] for key in archive.files}
 
