@@ -1,0 +1,11 @@
+data/*
+!data/README.md
+results/
+outputs/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
+.idea/
+.vscode/
