@@ -48,5 +48,3 @@ python check_reproduction.py
 
 This check does not repeat hyperparameter selection. Add `--full-grid` to
 include it, or use `--quick` for a short check without datasets.
-
-See [VERIFICATION.md](VERIFICATION.md) for completed checks and known limitations.
