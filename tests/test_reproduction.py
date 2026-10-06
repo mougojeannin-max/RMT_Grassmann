@@ -104,11 +104,17 @@ class ScientificTests(unittest.TestCase):
         threshold = 1 + n ** (-gamma)
         model = dict(p=5, values=np.array([[3., threshold, np.nextafter(threshold, np.inf), .01, 0.]]),
                      vectors=np.eye(5)[None], dof=np.array([n]))
-        entry = real.spec('Naive_raw', 1, gamma=gamma)
-        with patch.object(real, 'alignment_coefficients', side_effect=AssertionError('No correction')):
-            self.assertEqual(real.representations(model, entry)[3][0], 2)
-            scaled = dict(model, values=model['values'] * .01)
-            self.assertEqual(real.representations(scaled, entry)[3][0], 0)
+        for method in ('Naive_raw', 'Naive_white'):
+            entry = real.spec(method, 1, gamma=gamma)
+            with patch.object(real, 'alignment_coefficients', side_effect=AssertionError('No correction')):
+                bases, _, xis, ranks = real.representations(model, entry)
+                self.assertEqual(ranks[0], 2)
+                self.assertEqual(bases[0].shape[1], 2)
+                self.assertIsNone(xis)
+                scaled = dict(model, values=model['values'] * .01)
+                self.assertEqual(real.representations(scaled, entry)[3][0], 0)
+            with self.assertRaisesRegex(ValueError, 'Naive accepts only gamma and q'):
+                real.representations(model, dict(entry, tau=.2))
         naive = real.entries(['Naive_raw', 'Naive_white'])
         self.assertEqual(len(naive), 80)
         self.assertTrue(all(e['tau'] is None and e['alpha'] is None and e['beta'] is None for e in naive))
@@ -244,6 +250,21 @@ class ScientificTests(unittest.TestCase):
 
 
 class SimulationTests(unittest.TestCase):
+    def test_estimated_ranks_vary_and_only_oracle_uses_known_rank(self):
+        import simulation
+        spectra = [[.5]*6, [8., 7., .5, .5, .5, .5], [9., 8., 7., .5, .5, .5], [10.]*6]
+        white = np.array([np.diag(s) for s in spectra])
+        ids, sizes = np.arange(4), np.full(4, 60)
+        with patch.object(simulation, 'completed_distances', wraps=completed_distances) as grassmann, \
+                patch.object(simulation, 'ai_distances', return_value=np.zeros((4, 4))), \
+                patch.object(simulation, 'le_distances', return_value=np.zeros((4, 4))):
+            simulation.distance_matrices(white, sizes, ids, ids, 240, ids, np.full((4, 1), .8))
+        corrected, naive, oracle = grassmann.call_args_list
+        for call in (corrected, naive):
+            self.assertEqual([b.shape[1] for b in call.args[0]], [0, 2, 3, 6])
+        self.assertNotIn('xis', naive.kwargs)
+        self.assertEqual([b.shape[1] for b in oracle.args[0]], [1]*4)
+
     def test_paper_repetitions(self):
         # Independently recomputed with the original experimental kernels.
         accuracies = (

@@ -527,7 +527,7 @@ def main():
     splits, summary = summarize(test)
     for name, frame in [('test', test), ('selected', selected), ('split_scores', splits), ('summary', summary)]:
         frame.to_csv(args.output / f'{name}.csv', index=False)
-    for number, datasets in ((2, HSI), (4, [d for d in DATASETS if d not in HSI])):
+    for number, datasets in (('2a', HSI), ('2b', [d for d in DATASETS if d not in HSI])):
         table = summary[summary.dataset.isin(datasets)].copy()
         table['BA (%)'] = [f'{100 * r.ba_mean:.2f} +/- {100 * r.ba_std:.2f}' if r.valid else 'invalid'
                           for r in table.itertuples()]

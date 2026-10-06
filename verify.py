@@ -10,10 +10,6 @@ from scipy.stats import t
 
 from references import reference_file
 
-METHOD_NAMES = {"grassmann_corrigee_mp": "CORR", "grassmann_naive_rang_naif": "NAIVE",
-                "grassmann_oracle_empirical": "ORACLE", "affine_corrigee": "AI-CORR",
-                "log_euclidienne_corrigee": "LE-CORR"}
-
 
 def array_checksum(array):
     digest = hashlib.sha256()
@@ -83,7 +79,6 @@ def simulation(folder, partial):
         ("distance_repetitions", "simulation_mae", ["true_distance", "mean_distance", "mae", "mse", "pairs"], 1e-7),
     ):
         expected = pd.read_csv(reference_file(expected_name + ".csv"))
-        expected["method"] = expected.method.replace(METHOD_NAMES)
         actual = pd.read_csv(folder / (name + ".csv"))
         train_count = np.ceil(.6*np.sqrt(actual.p)).astype(int)
         test_count = np.ceil(.4*np.sqrt(actual.p)).astype(int)
