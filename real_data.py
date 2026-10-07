@@ -231,7 +231,7 @@ def representations(model, entry):
         thresholds = np.asarray([rank_threshold(p, int(n), model['n_global'],
                      alpha=entry['alpha'], beta=entry['beta'] or 1 / 3) for n in counts])
         ranks = np.count_nonzero(values / noise[:, None] > thresholds[:, None], axis=1)
-        xis = [alignment_coefficients(s[:r], p / float(n), v)
+        xis = [alignment_coefficients(s[:r], p / float(n), v, p)
                for s, r, n, v in zip(values, ranks, counts, noise)]
     bases = [model['vectors'][i, :, :rank] for i, rank in enumerate(ranks)]
     complements = [model['vectors'][i, :, rank:] for i, rank in enumerate(ranks)]

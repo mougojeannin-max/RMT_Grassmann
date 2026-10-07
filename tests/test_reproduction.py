@@ -99,6 +99,26 @@ class ScientificTests(unittest.TestCase):
             with self.assertRaises((ValueError, np.linalg.LinAlgError)):
                 pca_distances(model, method)
 
+    def test_alignment_floor_depends_on_ambient_dimension(self):
+        # At the MP edge the estimated alignment is zero; a strong spike
+        # must keep its analytical alignment rather than being altered.
+        values = np.array([4., 12.1])  # c=1, noise=1, population spikes 1 and 10
+        for p in (64, 256):
+            actual = real.alignment_coefficients(values, 1., 1., p)
+            np.testing.assert_allclose(actual, [1 / p, .9], rtol=0, atol=1e-15)
+            self.assertEqual(real.alignment_coefficients([], 1., 1., p).shape, (0,))
+        for p in (0, -1, 2.5):
+            with self.assertRaises(ValueError):
+                real.alignment_coefficients(values, 1., 1., p)
+
+    def test_corrected_representation_passes_filtered_ambient_dimension(self):
+        model = dict(p=5, values=np.array([[8., 1., 1., 1., 1.]]),
+                     vectors=np.eye(5)[None], dof=np.array([19]), n_global=None)
+        entry = real.spec('Corr_raw', 1, tau=.2, alpha=.3)
+        with patch.object(real, 'alignment_coefficients', wraps=real.alignment_coefficients) as align:
+            real.representations(model, entry)
+            self.assertEqual(align.call_args.args[3], 5)
+
     def test_naive_uses_absolute_strict_threshold_without_noise_estimation(self):
         gamma, n = .2, 19
         threshold = 1 + n ** (-gamma)

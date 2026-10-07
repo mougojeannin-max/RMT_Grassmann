@@ -31,17 +31,17 @@ def rank_threshold(p, n, n_global=None, alpha=1 / 3, beta=1 / 3):
     return (1 + np.sqrt(p / float(n))) ** 2 + p ** (-alpha) + margin
 
 
-def alignment_coefficients(values, c, noise):
-    """Estimate eigenvector alignment from the retained sample eigenvalues."""
-    if c <= 0 or noise <= 0:
-        raise ValueError('Positive aspect ratio and noise estimate required')
+def alignment_coefficients(values, c, noise, p):
+    """Estimate eigenvector alignment, with the article's ambient-dimension floor."""
+    if c <= 0 or noise <= 0 or not isinstance(p, (int, np.integer)) or p < 1:
+        raise ValueError('Positive aspect ratio, noise estimate and integer dimension required')
     centered = np.asarray(values) - (1 + c) * noise
     discriminant = centered ** 2 - 4 * c * noise ** 2
     spikes = .5 * (centered + np.sqrt(np.maximum(discriminant, 0)))
     if np.any(spikes <= 0) or not np.isfinite(spikes).all():
         raise ValueError('Invalid estimated spikes')
     xi = (1 - c * noise ** 2 / spikes ** 2) / (1 + c * noise / spikes)
-    return np.clip(xi, np.finfo(float).eps, None)
+    return np.maximum(xi, 1 / p)
 
 
 def _singular_values(grams, corrected):

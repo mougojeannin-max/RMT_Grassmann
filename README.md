@@ -49,3 +49,17 @@ python check_reproduction.py
 
 This check does not repeat hyperparameter selection. Add `--full-grid` to
 include it, or use `--quick` for a short check without datasets.
+
+The real-data alignment correction uses the article's floor `1/p`, where
+`p` is the ambient dimension after inactive-channel removal. To check that
+this floor leaves the published results unchanged, run:
+
+```sh
+python check_alignment_floor.py
+```
+
+This audit checks all prepared-data checksums and dimensions, and bounds the
+alignment of every retained spike over the complete parameter grid. It
+establishes equivalence with the previous machine-epsilon floor; it does
+not rerun the distance matrices or the hyperparameter searches. Its report
+and the unchanged table aggregates are saved in `results/alignment_floor/`.
